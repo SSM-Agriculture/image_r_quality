@@ -1,6 +1,7 @@
 FROM rocker/r-base:4.5.1
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV OTEL_SDK_DISABLED=true
 
 # ------------------------------------------------------------------------------
 # Dépendances système
@@ -20,53 +21,69 @@ RUN apt-get update && \
         libxml2-dev \
         libcurl4-openssl-dev \
         libssl-dev \
-        libgit2-dev && \
+        libgit2-dev \
+        pandoc && \
     rm -rf /var/lib/apt/lists/*
 
+
 # ------------------------------------------------------------------------------
-# Packages R
+# Packages R qualité
 # ------------------------------------------------------------------------------
 
-RUN R -q -e "install.packages( \
-    c( \
-      'remotes', \
-      'lintr', \
-      'styler', \
-      'covr', \
-      'goodpractice', \
-      'cli', \
-      'jsonlite', \
-      'xml2', \
-      'glue', \
-      'fs', \
-      'rlang', \
-      'withr', \
-      'testthat' \
-    ), \
-    repos='https://cloud.r-project.org', \
-    Ncpus=max(1, parallel::detectCores() - 1L) \
+RUN R --vanilla --slave -e "\
+install.packages(\
+  c(\
+    'remotes',\
+    'lintr',\
+    'styler',\
+    'covr',\
+    'goodpractice',\
+    'cli',\
+    'jsonlite',\
+    'xml2',\
+    'glue',\
+    'fs',\
+    'rlang',\
+    'withr',\
+    'testthat',\
+    'knitr',\
+    'rmarkdown',\
+    'pkgdown',\
+    'htmltools'\
+  ),\
+  repos='https://cloud.r-project.org',\
+  Ncpus=max(1, parallel::detectCores() - 1L)\
 )"
 
-# ------------------------------------------------------------------------------
-# rsonar
-# ------------------------------------------------------------------------------
-
-RUN R -q -e "remotes::install_github('ddotta/rsonar')"
 
 # ------------------------------------------------------------------------------
-# Vérification de l'image
+# Installation rsonar
 # ------------------------------------------------------------------------------
 
-RUN R -q <<'EOF'
+RUN R --vanilla --slave -e "\
+remotes::install_github(\
+  'ddotta/rsonar',\
+  dependencies=TRUE,\
+  upgrade='never'\
+)"
+
+
+# ------------------------------------------------------------------------------
+# Vérification finale
+# ------------------------------------------------------------------------------
+
+RUN R --vanilla --slave <<'EOF'
+
 cat("============================================\n")
-cat("R quality image successfully built\n")
+cat("R quality image validation\n")
 cat("============================================\n\n")
 
-cat("R version\n")
+cat("R version:\n")
 print(R.version.string)
 
-cat("\nLibrary paths\n")
+cat("\nLibrary paths:\n")
 print(.libPaths())
+
 
 pkgs <- c(
   "rsonar",
@@ -81,10 +98,16 @@ pkgs <- c(
   "fs",
   "rlang",
   "withr",
-  "testthat"
+  "testthat",
+  "knitr",
+  "rmarkdown",
+  "pkgdown",
+  "htmltools"
 )
 
-cat("\nInstalled packages\n")
+
+cat("\nPackage availability:\n")
+
 print(
   data.frame(
     package = pkgs,
@@ -92,11 +115,24 @@ print(
   )
 )
 
-cat("\nLoading packages...\n")
 
-invisible(lapply(pkgs, library, character.only = TRUE))
+cat("\nLoading packages:\n")
 
-cat("All packages successfully loaded.\n\n")
+invisible(
+  lapply(
+    pkgs,
+    library,
+    character.only = TRUE
+  )
+)
 
-sessionInfo()
+
+cat("\nChecking rsonar:\n")
+library(rsonar)
+
+print(packageVersion("rsonar"))
+
+
+cat("\nImage validation OK\n")
+
 EOF
