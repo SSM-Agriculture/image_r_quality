@@ -48,7 +48,6 @@ install.packages(\
     'testthat',\
     'knitr',\
     'rmarkdown',\
-    'pkgdown',\
     'htmltools'\
   ),\
   repos='https://cloud.r-project.org',\
@@ -69,7 +68,7 @@ remotes::install_github(\
 
 
 # ------------------------------------------------------------------------------
-# Vérification finale
+# Validation de l'image
 # ------------------------------------------------------------------------------
 
 RUN R --vanilla --slave <<'EOF'
@@ -78,8 +77,10 @@ cat("============================================\n")
 cat("R quality image validation\n")
 cat("============================================\n\n")
 
+
 cat("R version:\n")
 print(R.version.string)
+
 
 cat("\nLibrary paths:\n")
 print(.libPaths())
@@ -101,38 +102,34 @@ pkgs <- c(
   "testthat",
   "knitr",
   "rmarkdown",
-  "pkgdown",
   "htmltools"
 )
 
 
 cat("\nPackage availability:\n")
 
+status <- pkgs %in% rownames(installed.packages())
+
 print(
   data.frame(
     package = pkgs,
-    installed = pkgs %in% rownames(installed.packages())
+    installed = status
   )
 )
 
 
-cat("\nLoading packages:\n")
-
-invisible(
-  lapply(
-    pkgs,
-    library,
-    character.only = TRUE
+if (!all(status)) {
+  stop(
+    "Missing packages: ",
+    paste(pkgs[!status], collapse = ", ")
   )
-)
+}
 
 
-cat("\nChecking rsonar:\n")
-library(rsonar)
-
+cat("\nrsonar version:\n")
 print(packageVersion("rsonar"))
 
 
-cat("\nImage validation OK\n")
+cat("\nValidation OK\n")
 
 EOF
