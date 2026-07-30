@@ -10,7 +10,7 @@ Image Docker R prechargee pour les jobs CI de qualite (lint, style, tests).
 ## Publication sur Docker Hub
 1. Push du repository sur GitHub.
 2. Le workflow GitHub Actions publie l'image sur `docker.io/<dockerhub_username>/r-quality`.
-3. Utiliser l'image dans la CI:
+3. Utiliser l'image dans la CI :
 
 ```yaml
 image:
